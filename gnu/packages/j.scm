@@ -72,7 +72,8 @@
                       (j32 (string-append jbld "/j32/bin/jconsole " tsu))
                       (j64 (string-append jbld "/j64/bin/jconsole " tsu))
                       (jmake (string-append jgit "/make"))
-                      (out (assoc-ref %outputs "out")))
+                      (out (assoc-ref %outputs "out"))
+                      (guix-profile-j-share "'/share/j',~2!:5'GUIX_PROFILE'"))
                  (mkdir-p (string-append jbld "/j64/bin"))
                  (for-each setenv
                            (list "jgit" "jbld" "jplatform" "jsuffix"
@@ -91,7 +92,7 @@
                    (("jgit=~/git/jsource") (string-append "jgit=" jgit))
                    (("jbld=~/jbld") (string-append "jbld=" jbld)))
                  (substitute* (list (string-append jgit "/jlibrary/bin/profile.ijs"))
-                   (("/usr/share/j/8.07") (string-append out "/share/j")))
+                   (("/usr/share/j/8.07") guix-profile-j-share))
                  (invoke "cp" "make/jvars.sh" ".")
                  #t)))
            (replace 'build
@@ -166,8 +167,7 @@
                                               jsuffix " " tsu))
                       (jmake (string-append jgit "/make"))
                       (out (assoc-ref %outputs "out"))
-                      (guix-profile-j-share
-                       "'/share/j',~2!:5'GUIX_PROFILE'"))
+                      (guix-profile-j-share "'/share/j',~2!:5'GUIX_PROFILE'"))
                  (mkdir-p (string-append jbld "/j64/bin"))
                  (for-each setenv
                            (list "jgit" "jbld" "jplatform" "jsuffix" "CC"

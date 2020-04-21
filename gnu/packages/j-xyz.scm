@@ -47,23 +47,36 @@
            (commit commit)))
          (sha256
           (base32 "0pp71i7ylyn4nv43vagh0h2y1yb2dx0py97bscxykk04xavcvx6j"))))
+      (inputs `(("j" ,j-901)
+                ("zlib" ,zlib)))
+      (propagated-inputs `(("zlib" ,zlib)))
       (build-system gnu-build-system)
       (arguments
        `(#:modules ((guix build gnu-build-system) (guix build utils))
          #:tests? #f
          #:phases
          (modify-phases %standard-phases
-           (replace 'configure (lambda _ #t))
-           (replace 'build     (lambda _ #t))
-           (replace 'check     (lambda _ #t))
+           (replace 'configure
+             (lambda _
+               (substitute* '("zlib.ijs")
+                 (("zlib=: ") "zlib=: '/lib/libz.so',~2!:5'GUIX_PROFILE' NB. ")) ;; todo find less hacky way
+               #t))
+           (delete 'check)
+           (delete 'build)
            (replace 'install
              (lambda _
-               (let* ((out (assoc-ref %outputs "out")))
-                 (system "echo \"exit echo FOLDER\" | jconsole manifest.ijs")
-                 (copy-recursively "." (string-append out "/share/j/addons/arc/zlib"))
+               (let* ((out (string-append (assoc-ref %outputs "out")
+                                          "/share/j/addons/arc/zlib")))
+                 ;; (system "echo \"exit echo FOLDER\" | jconsole manifest.ijs") todo explore porting j addon build system to a guix one
+                 (for-each (lambda (f)
+                             (install-file f out))
+                           '("zlib.ijs"
+                             "manifest.ijs"
+                             "readme.txt"
+                             "history.txt"))
                  #t))))))
-      (inputs `(("j" ,j-901)
-                ("zlib" ,zlib)))
+      
+      ;;
       (home-page "https://github.com/jsoftware/arc_zlib")
       (synopsis "Interface with zlib")
       (description "This J addon provides an interface to zlib.")
