@@ -165,7 +165,9 @@
                       (j64avx2 (string-append jbld "/j64/bin/jconsole -lib libjavx2."
                                               jsuffix " " tsu))
                       (jmake (string-append jgit "/make"))
-                      (out (assoc-ref %outputs "out")))
+                      (out (assoc-ref %outputs "out"))
+                      (guix-profile-j-share
+                       "'/share/j',~2!:5'GUIX_PROFILE'"))
                  (mkdir-p (string-append jbld "/j64/bin"))
                  (for-each setenv
                            (list "jgit" "jbld" "jplatform" "jsuffix" "CC"
@@ -184,7 +186,7 @@
                    (("jgit=~/git/jsource") (string-append "jgit=" jgit))
                    (("jbld=~/jbld")        (string-append "jbld=" jbld)))
                  (substitute* (list (string-append jgit "/jlibrary/bin/profile.ijs"))
-                   (("/usr/share/j/9.01") (string-append out "/share/j")))
+                   (("'/usr/share/j/9.01'") guix-profile-j-share))
                  (invoke "cp" "make/jvars.sh" ".")
                  #t)))
            (replace 'build
@@ -194,14 +196,12 @@
            (replace 'check ;; todo!
              (lambda _
                (system "echo \"RECHO ddall\" | $j64")))
-           (replace
-               'install
+           (replace 'install
              (lambda _
                (let* ((out (assoc-ref %outputs "out"))
                       (jbld (getenv "jbld"))
                       (jgit (getenv "jgit"))
                       (jlibrary (string-append jgit "/jlibrary")))
-                 (system (string-append "ls -lah " jlibrary))
                  (copy-recursively (string-append jbld "/j64/bin")
                                    (string-append out "/bin"))
                  (copy-recursively jlibrary (string-append out "/share/j"))
