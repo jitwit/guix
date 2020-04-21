@@ -59,8 +59,7 @@
        `(#:modules ((guix build gnu-build-system) (guix build utils))
          #:tests? #f
          #:phases
-         (modify-phases
-             %standard-phases
+         (modify-phases %standard-phases
            (replace 'configure
              (lambda _
                (setenv "HOME" (getenv "TEMP"))
