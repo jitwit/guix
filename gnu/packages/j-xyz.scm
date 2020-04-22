@@ -17,6 +17,7 @@
 ;;; along with GNU Guix.  If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (gnu packages j-xyz)
+  #:use-module (ice-9 popen)
   #:use-module (guix packages)
   #:use-module (guix download)
   #:use-module (guix utils)
@@ -29,6 +30,25 @@
   #:use-module (gnu packages compression)
   #:use-module (gnu packages j)
   )
+
+(define (read-manifest val)
+  "Read the given J name's value with jconsole to a string in scheme."
+  (define command
+    (format #f "echo \"(2!:55)(0 0 $ 1!:2&2) ~a\" | jconsole manifest.ijs" val))
+  (define out (open-pipe command OPEN_READ))
+  (let loop ((x (read-char out)) (xs '()))
+    (if (eof-object? x)
+	(list->string (reverse xs))
+	(loop (read-char out) (cons x xs)))))
+
+(define (manifest-files)
+  (string-tokenize (read-manifest 'FILES)))
+
+(define (manifest-version)
+  (car (string-tokenize (read-manifest 'VERSION))))
+
+(define (manifest-depends)
+  (string-tokenize (read-manifest 'DEPENDS)))
 
 ;; https://github.com/jsoftware/arc_zlib.git
 ;; b88f4cab94af12157b33fb22ce30f59ea481a840
