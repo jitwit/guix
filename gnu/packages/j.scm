@@ -54,8 +54,7 @@
       (inputs `(("bash" ,bash)
                 ("readline" ,readline)
                 ("bc" ,bc)
-                ("libedit" ,libedit)
-                ("gcc" ,gcc-9)))
+                ("libedit" ,libedit)))
       (outputs '("out"))
       (arguments
        ;; add (ice-9 popen) to read test failures from subprocess?
@@ -65,7 +64,7 @@
          (modify-phases %standard-phases
            (replace 'configure
              (lambda _
-               ;; environment variables J expects
+               ;; the environment variables J build scripts expect
                (setenv "HOME" (getenv "TEMP"))
                (let* ((jgit (getcwd))
                       (jbld (string-append (getenv "HOME") "/jbld"))
@@ -90,7 +89,7 @@
                  ;; make/make.txt asks us to copy make/jvars.sh to ~ and
                  ;; change appropriate vars. that file is used to set
                  ;; environment variables before calling J's build scripts. We
-                 ;; set those explicitly here first.
+                 ;; set those explicitly here instead.
                  (for-each setenv
                            (list "jgit" "jbld" "jplatform" "jsuffix" "CC"
                                  "tsu" "j32" "j64" "j64avx" "j64avx2" "jmake"
@@ -112,11 +111,13 @@
                  (substitute* (list (string-append jgit "/jlibrary/bin/profile.ijs"))
                    (("'/usr/share/j/9.01'") guix-profile-j-share))
                  ;; now, we copy over files which will be included with
-                 ;; installation. todo: should delete extraneous txt and bat files.
+                 ;; installation. todo: should delete extraneous txt and bat
+                 ;; files.
                  (string-append jbld "/j64/bin")
                  (mkdir-p (string-append jbld "/j64/bin"))
                  (copy-recursively (string-append jgit "/jlibrary")
                                    (string-append jbld "/j64/share/j"))
+                 ;; j looks for the profile in bin?
                  (install-file (string-append jgit "/jlibrary/bin/profile.ijs")
                                (string-append jbld "/j64/bin"))
                  #t)))
@@ -126,6 +127,8 @@
                #t))
            (replace 'check ;; todo fail if 1 or more tests fail. for now, output test results
              (lambda _
+               ;; this echos out tests as J runs them and finally prints the
+               ;; number of test failures.
                (system "echo \"RECHO ddall\" | $j64avx2")
                #t))
            (replace 'install
