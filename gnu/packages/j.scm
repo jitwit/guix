@@ -32,6 +32,8 @@
   #:use-module (gnu packages readline))
 
 (define-public j-901
+  ;; should factor out some of the configuration done inside the build
+  ;; modify-phases form. currently assumes 64 bit system
   (let ((commit "370058d8db066ccf54fa088bb2a4d3ac3283471b")
         (jplatform "linux")
         (jversion "901")
@@ -56,12 +58,14 @@
                 ("gcc" ,gcc-9)))
       (outputs '("out"))
       (arguments
+       ;; add (ice-9 popen) to read test failures from subprocess?
        `(#:modules ((guix build gnu-build-system) (guix build utils))
-         #:tests? #f ;; todo!
+         #:tests? #f ;; todo (still need to fail if tests fail)
          #:phases
          (modify-phases %standard-phases
            (replace 'configure
              (lambda _
+               ;; environment variables J expects
                (setenv "HOME" (getenv "TEMP"))
                (let* ((jgit (getcwd))
                       (jbld (string-append (getenv "HOME") "/jbld"))
@@ -77,8 +81,16 @@
                                               jsuffix " " tsu))
                       (jmake (string-append jgit "/make"))
                       (out (assoc-ref %outputs "out"))
+                      ;; this is likely not a good hack to help profile.ijs
+                      ;; point flexibly to where it ought. used when running
+                      ;; tests as well as upon installation to make installed
+                      ;; addons visible.
                       (guix-profile-j-share "'/share/j',~2!:5'J_INSTALL'")
                       (j-pre-install (string-append jbld "/j64")))
+                 ;; make/make.txt asks us to copy make/jvars.sh to ~ and
+                 ;; change appropriate vars. that file is used to set
+                 ;; environment variables before calling J's build scripts. We
+                 ;; set those explicitly here first.
                  (for-each setenv
                            (list "jgit" "jbld" "jplatform" "jsuffix" "CC"
                                  "tsu" "j32" "j64" "j64avx" "j64avx2" "jmake"
@@ -86,6 +98,10 @@
                            (list jgit jbld jplatform jsuffix CC
                                  tsu j32 j64 j64avx j64avx2 jmake
                                  j-pre-install))
+                 ;; make/make.txt asks us to copy jsrc/jversion-x.h to
+                 ;; jsrc/jversion.h and change the appropriate
+                 ;; variables. Instead of using substitute*, just print
+                 ;; directly to target file.
                  (with-output-to-file "jsrc/jversion.h"
                    (lambda ()
                      (display "#define jversion  ") (write ,jversion)  (newline)
@@ -95,6 +111,8 @@
                      (display "#define jbuilder  ") (write "guix")     (newline)))
                  (substitute* (list (string-append jgit "/jlibrary/bin/profile.ijs"))
                    (("'/usr/share/j/9.01'") guix-profile-j-share))
+                 ;; now, we copy over files which will be included with
+                 ;; installation. todo: should delete extraneous txt and bat files.
                  (string-append jbld "/j64/bin")
                  (mkdir-p (string-append jbld "/j64/bin"))
                  (copy-recursively (string-append jgit "/jlibrary")
@@ -106,15 +124,14 @@
              (lambda _
                (invoke "make/build_all.sh" "j64")
                #t))
-           (replace 'check
+           (replace 'check ;; todo fail if 1 or more tests fail. for now, output test results
              (lambda _
-               (system "echo \"RECHO ddall\" | $j64avx2")))
+               (system "echo \"RECHO ddall\" | $j64avx2")
+               #t))
            (replace 'install
              (lambda _
-               (let ((out (assoc-ref %outputs "out"))
-                     (jbld (getenv "jbld")))
-                 (copy-recursively jbld out)
-                 #t))))))
+               (copy-recursively (getenv "J_INSTALL") (assoc-ref %outputs "out"))
+               #t)))))
       (synopsis "APL Dialect")
       (description "Terse, array-based language originally developed by KenIverson and Roger Hui.")
       (home-page "https://www.jsoftware.com/")
