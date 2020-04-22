@@ -31,96 +31,6 @@
   #:use-module (gnu packages libedit)
   #:use-module (gnu packages readline))
 
-(define-public j-807
-  (let ((commit "43c6c6154f53b303f6a930d0ca3548328d981495")
-        (jplatform "linux")
-        (jversion "807")
-        (jtype "release"))
-    (package
-      (name "j")
-      (version "807")
-      (source
-       (origin
-         (method git-fetch)
-         (uri
-          (git-reference
-           (url "https://github.com/jsoftware/jsource.git")
-           (commit commit)))
-         (sha256
-          (base32 "1qciw2yg9x996zglvj2461qby038x89xcmfb3qyrh3myn8m1nq2n"))))
-      (build-system gnu-build-system)
-      (inputs `(("bash" ,bash)
-                ("readline" ,readline)
-                ("bc" ,bc)
-                ("libedit" ,libedit)
-                ("gcc" ,gcc-9)))
-      (outputs '("out"))
-      (arguments
-       `(#:modules ((guix build gnu-build-system) (guix build utils))
-         #:tests? #f
-         #:phases
-         (modify-phases %standard-phases
-           (replace 'configure
-             (lambda _
-               (setenv "HOME" (getenv "TEMP"))
-               (let* ((jgit (getcwd))
-                      (jbld (string-append (getenv "HOME") "/jbld"))
-                      (jplatform "linux")
-                      (jsuffix "so")
-                      (CC "gcc")
-                      (tsu (string-append jgit "/test/tsu.ijs"))
-                      (j32 (string-append jbld "/j32/bin/jconsole " tsu))
-                      (j64 (string-append jbld "/j64/bin/jconsole " tsu))
-                      (jmake (string-append jgit "/make"))
-                      (out (assoc-ref %outputs "out"))
-                      (guix-profile-j-share "'/share/j',~2!:5'GUIX_PROFILE'"))
-                 (mkdir-p (string-append jbld "/j64/bin"))
-                 (for-each setenv
-                           (list "jgit" "jbld" "jplatform" "jsuffix"
-                                 "CC" "tsu" "j32" "j64" "jmake")
-                           (list jgit jbld jplatform jsuffix
-                                 CC tsu j32 j64 jmake))
-                 (with-output-to-file "jsrc/jversion.h"
-                   (lambda ()
-                     (display "#define jversion  ") (write ,jversion)  (newline)
-                     (display "#define jplatform ") (write ,jplatform) (newline)
-                     (display "#define jtype     ") (write ,jtype)     (newline)
-                     (display "#define jlicense  ") (write "GPL3")     (newline)
-                     (display "#define jbuilder  ") (write "guix")     (newline)))
-                 (substitute* '("make/jvars.sh")
-                   (("CC=clang") (string-append "CC=" CC))
-                   (("jgit=~/git/jsource") (string-append "jgit=" jgit))
-                   (("jbld=~/jbld") (string-append "jbld=" jbld)))
-                 (substitute* (list (string-append jgit "/jlibrary/bin/profile.ijs"))
-                   (("/usr/share/j/8.07") guix-profile-j-share))
-                 (invoke "cp" "make/jvars.sh" ".")
-                 #t)))
-           (replace 'build
-             (lambda _
-               (invoke "make/build_jconsole.sh" "j64")
-               (invoke "make/build_libj.sh"     "j64")
-               #t))
-           (replace 'check
-             (lambda _
-               (system "echo \"RECHO ddall\" | $j64")))
-           (replace 'install
-             (lambda _
-               (let* ((out (assoc-ref %outputs "out"))
-                      (jbld (getenv "jbld"))
-                      (jgit (getenv "jgit"))
-                      (jlibrary (string-append jgit "/jlibrary")))
-                 (copy-recursively (string-append jbld "/j64/bin")
-                                   (string-append out "/bin"))
-                 (copy-recursively jlibrary
-                                   (string-append out "/share/j"))
-                 (copy-recursively (string-append jlibrary "/bin")
-                                   (string-append out "/bin"))
-                 #t))))))
-      (synopsis "APL Dialect")
-      (description "Dialect by Ken Iverson and Roger Hui")
-      (home-page "https://www.jsoftware.com/")
-      (license gpl3+))))
-
 (define-public j-901
   (let ((commit "370058d8db066ccf54fa088bb2a4d3ac3283471b")
         (jplatform "linux")
@@ -167,13 +77,15 @@
                                               jsuffix " " tsu))
                       (jmake (string-append jgit "/make"))
                       (out (assoc-ref %outputs "out"))
-                      (guix-profile-j-share "'/share/j',~2!:5'GUIX_PROFILE'"))
-                 (mkdir-p (string-append jbld "/j64/bin"))
+                      (guix-profile-j-share "'/share/j',~2!:5'J_INSTALL'")
+                      (j-pre-install (string-append jbld "/j64")))
                  (for-each setenv
                            (list "jgit" "jbld" "jplatform" "jsuffix" "CC"
-                                 "tsu" "j32" "j64" "j64avx" "j64avx2" "jmake")
+                                 "tsu" "j32" "j64" "j64avx" "j64avx2" "jmake"
+                                 "J_INSTALL")
                            (list jgit jbld jplatform jsuffix CC
-                                 tsu j32 j64 j64avx j64avx2 jmake))
+                                 tsu j32 j64 j64avx j64avx2 jmake
+                                 j-pre-install))
                  (with-output-to-file "jsrc/jversion.h"
                    (lambda ()
                      (display "#define jversion  ") (write ,jversion)  (newline)
@@ -181,34 +93,29 @@
                      (display "#define jtype     ") (write ,jtype)     (newline)
                      (display "#define jlicense  ") (write "GPL3")     (newline)
                      (display "#define jbuilder  ") (write "guix")     (newline)))
-                 (substitute* '("make/jvars.sh")
-                   (("CC=clang")           (string-append "CC=" CC))
-                   (("jgit=~/git/jsource") (string-append "jgit=" jgit))
-                   (("jbld=~/jbld")        (string-append "jbld=" jbld)))
                  (substitute* (list (string-append jgit "/jlibrary/bin/profile.ijs"))
                    (("'/usr/share/j/9.01'") guix-profile-j-share))
-                 (invoke "cp" "make/jvars.sh" ".")
+                 (string-append jbld "/j64/bin")
+                 (mkdir-p (string-append jbld "/j64/bin"))
+                 (copy-recursively (string-append jgit "/jlibrary")
+                                   (string-append jbld "/j64/share/j"))
+                 (install-file (string-append jgit "/jlibrary/bin/profile.ijs")
+                               (string-append jbld "/j64/bin"))
                  #t)))
            (replace 'build
              (lambda _
                (invoke "make/build_all.sh" "j64")
                #t))
-           (replace 'check ;; todo!
+           (replace 'check
              (lambda _
-               (system "echo \"RECHO ddall\" | $j64")))
+               (system "echo \"RECHO ddall\" | $j64avx2")))
            (replace 'install
              (lambda _
-               (let* ((out (assoc-ref %outputs "out"))
-                      (jbld (getenv "jbld"))
-                      (jgit (getenv "jgit"))
-                      (jlibrary (string-append jgit "/jlibrary")))
-                 (copy-recursively (string-append jbld "/j64/bin")
-                                   (string-append out "/bin"))
-                 (copy-recursively jlibrary (string-append out "/share/j"))
-                 (copy-recursively (string-append jlibrary "/bin")
-                                   (string-append out "/bin"))
+               (let ((out (assoc-ref %outputs "out"))
+                     (jbld (getenv "jbld")))
+                 (copy-recursively jbld out)
                  #t))))))
       (synopsis "APL Dialect")
-      (description "Dialect by Ken Iverson and Roger Hui")
+      (description "Terse, array-based language originally developed by KenIverson and Roger Hui.")
       (home-page "https://www.jsoftware.com/")
-      (license gpl3+))))
+      (license gpl3))))
