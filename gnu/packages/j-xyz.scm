@@ -160,6 +160,45 @@
       (description "Utilities for *.bmp files")
       (license expat))))
 
+;; https://github.com/jsoftware/graphics_color.git
+;; 2bb8578c370fd2f25b118ae8cba11153c4687eab
+(define-public j-graphics-color
+  (let ((commit "2bb8578c370fd2f25b118ae8cba11153c4687eab")
+        (version "1.0.19"))
+    (package
+      (name "j-graphics-color")
+      (version version)
+      (source
+       (origin
+         (method git-fetch)
+         (uri
+          (git-reference
+           (url "https://github.com/jsoftware/graphics_color.git")
+           (commit commit)))
+         (sha256
+          (base32 "155m56f0d268jc8g9yc6fw5l8mnx2sm408if865h0a7682mpgqrb"))))
+      (native-inputs `(("j" ,j-901)))
+      (outputs '("out"))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:modules ((guix build gnu-build-system)
+                    (guix build utils)
+                    (ice-9 popen))
+         #:phases
+         (modify-phases %standard-phases
+           (delete 'configure)
+           (delete 'check)
+           (delete 'build)
+           (replace 'install
+             (lambda _
+               (let ((out (string-append (assoc-ref %outputs "out")
+                                         "/share/j/addons/graphics/color")))
+                 (copy-recursively "." out)
+                 #t))))))
+      (home-page "https://github.com/jsoftware/graphics_color")
+      (synopsis "Color tables and related scripts")
+      (description "Color tables and related scripts")
+      (license expat))))
 
 ;; ;; https://github.com/jsoftware/graphics_png.git
 ;; ;; 2767c9b8efea71c38b0d8433bd58aba360ea464a
