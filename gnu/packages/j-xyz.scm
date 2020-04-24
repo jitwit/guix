@@ -26,35 +26,14 @@
   #:use-module ((guix licenses) :select (expat))
   #:use-module (gnu packages base)
   #:use-module (gnu packages compression)
-  #:use-module (gnu packages bash)
-  #:use-module (gnu packages compression)
   #:use-module (gnu packages j)
   )
-
-(define (read-manifest val)
-  "Read the given J name's value with jconsole to a string in scheme."
-  (define command
-    (format #f "echo \"(2!:55)(0 0 $ 1!:2&2) ~a\" | jconsole manifest.ijs" val))
-  (define out (open-pipe command OPEN_READ))
-  (let loop ((x (read-char out)) (xs '()))
-    (if (eof-object? x)
-	(list->string (reverse xs))
-	(loop (read-char out) (cons x xs)))))
-
-(define (manifest-files)
-  (string-tokenize (read-manifest 'FILES)))
-
-(define (manifest-version)
-  (car (string-tokenize (read-manifest 'VERSION))))
-
-(define (manifest-depends)
-  (string-tokenize (read-manifest 'DEPENDS)))
 
 ;; https://github.com/jsoftware/arc_zlib.git
 ;; b88f4cab94af12157b33fb22ce30f59ea481a840
 (define-public j-arc-zlib
-  (let ((commit "b88f4cab94af12157b33fb22ce30f59ea481a840")
-        (version "1.0.8"))
+  (let ((commit "f5e6a1138d4f481a4615cffd90cc01f704d0729b")
+        (version "1.0.9"))
     (package
       (name "j-arc-zlib")
       (version version)
@@ -63,32 +42,39 @@
          (method git-fetch)
          (uri
           (git-reference
-           (url "https://github.com/jsoftware/arc_zlib.git")
+           (url "https://github.com/jitwit/arc_zlib.git")
            (commit commit)))
          (sha256
-          (base32 "0pp71i7ylyn4nv43vagh0h2y1yb2dx0py97bscxykk04xavcvx6j"))))
-      (inputs `(("j" ,j-901)
-                ("zlib" ,zlib)))
-      (propagated-inputs `(("zlib" ,zlib)))
+          (base32 "0cyqv22nkznlcxy8sjkvycnbiaa7mgfm45vlpjfrzh7vxrhrq3pa"))))
+      (inputs `(("zlib" ,zlib)))
+      (native-inputs `(("j" ,j-901)))
       (outputs '("out"))
       (build-system gnu-build-system)
       (arguments
-       `(#:modules ((guix build gnu-build-system) (guix build utils))
-         #:tests? #f
+       `(#:modules ((guix build gnu-build-system)
+                    (guix build utils)
+                    (ice-9 popen))
          #:phases
          (modify-phases %standard-phases
            (replace 'configure
              (lambda _
                (substitute* '("zlib.ijs")
-                 (("zlib=: ") "zlib=: '/lib/libz.so',~2!:5'GUIX_PROFILE' NB. ")) ;; todo find less hacky way
+                 (("zlib=: .+$")
+                  (string-append "zlib=: '"
+                                 (search-path
+                                  (search-path-as-string->list
+                                   (getenv "LIBRARY_PATH"))
+                                  "libz.so")
+                                 "'\n")))
                #t))
            (delete 'check)
            (delete 'build)
            (replace 'install
              (lambda _
-               (let* ((out (string-append (assoc-ref %outputs "out")
-                                          "/share/j/addons/arc/zlib")))
-                 ;; (system "echo \"exit echo FOLDER\" | jconsole manifest.ijs") todo explore porting j addon build system to a guix one
+               ;; (display (read-manifest 'FILES))
+               (newline)
+               (let ((out (string-append (assoc-ref %outputs "out")
+                                         "/share/j/addons/arc/zlib")))
                  (for-each (lambda (f)
                              (install-file f out))
                            '("zlib.ijs"
@@ -101,31 +87,30 @@
       (description "This J addon provides an interface to zlib.")
       (license expat))))
 
-;; https://github.com/jsoftware/graphics_png.git
-;; 2767c9b8efea71c38b0d8433bd58aba360ea464a
-(define-public j-graphics-png
-  (let ((commit "2767c9b8efea71c38b0d8433bd58aba360ea464a")
-        (version "1.0.28"))
+;; 171vw8lzw0f0njrr2d0nd0vn7crv0q5yrysz8wa7ky6kq92g2w75
+;; https://github.com/cdburke/convert_pjson.git
+(define-public j-convert-pjson
+  (let ((commit "a64defe9adb24a0350517ab99121e8c75259983e")
+        (version "1.0.23"))
     (package
-      (name "j-graphics-png")
+      (name "j-convert-pjson")
       (version version)
       (source
        (origin
          (method git-fetch)
          (uri
           (git-reference
-           (url "https://github.com/jsoftware/graphics_png.git")
+           (url "https://github.com/cdburke/convert_pjson.git")
            (commit commit)))
          (sha256
-          (base32 "1i5i9x7am36dr58bvlhydyp3bhmhbgg355k9jfddjylbrsnb7rc9"))))
-      (inputs `(("j" ,j-901)
-                ("j-arc-zlib" ,j-arc-zlib)))
-      (propagated-inputs `(("j-arc-zlib" ,j-arc-zlib)))
+          (base32 "1km259hnvc1qwxhvb6nz7pk79jz5rn62g43yhn6ma5bvfz5hj35r"))))
+      (native-inputs `(("j" ,j-901)))
       (outputs '("out"))
       (build-system gnu-build-system)
       (arguments
-       `(#:modules ((guix build gnu-build-system) (guix build utils))
-         #:tests? #f
+       `(#:modules ((guix build gnu-build-system)
+                    (guix build utils)
+                    (ice-9 popen))
          #:phases
          (modify-phases %standard-phases
            (delete 'configure)
@@ -133,49 +118,96 @@
            (delete 'build)
            (replace 'install
              (lambda _
-               (let* ((out (string-append (assoc-ref %outputs "out")
-                                          "/share/j/addons/graphics/png")))
-                 (install-file "png.ijs" out)
+               (let ((out (string-append (assoc-ref %outputs "out")
+                                         "/share/j/addons/convert/pjson")))
+                 (copy-recursively "." out)
                  #t))))))
       (home-page "https://github.com/jsoftware/arc_zlib")
-      (synopsis "Interface with zlib")
-      (description "This J addon provides an interface to zlib.")
+      (synopsis "json library for J")
+      (description "This J addon provides json serialization from within J.")
       (license expat))))
 
-;; bbfc957fc4ddf90231c4a06239cbc85c67cc2769
-;; https://github.com/jsoftware/general_misc.git
-(define j-general-misc
-  (let ((commit "bbfc957fc4ddf90231c4a06239cbc85c67cc2769")
-        (version "2.5.3"))
-    (package
-      (name "j-general-misc")
-      (version version)
-      (source
-       (origin
-         (method git-fetch)
-         (uri
-          (git-reference
-           (url "https://github.com/jsoftware/general_misc.git")
-           (commit commit)))
-         (sha256
-          (base32 "0pp71i7ylyn4nv43vagh0h2y1yb2dx0py97bscxykk04xavcvx6j"))))
-      (inputs `(("j" ,j-901)))
-      (build-system gnu-build-system)
-      (arguments
-       `(#:modules ((guix build gnu-build-system) (guix build utils))
-         #:tests? #f
-         #:phases
-         (modify-phases %standard-phases
-           (delete 'configure)
-           (delete 'check)
-           (delete 'build)
-           (replace 'install
-             (lambda _
-               (let* ((out (string-append (assoc-ref %outputs "out")
-                                          "/share/j/addons/graphics/png")))
-                 (install-file "png.ijs" out)
-                 #t))))))
-      (home-page "https://github.com/jsoftware/arc_zlib")
-      (synopsis "Interface with zlib")
-      (description "This J addon provides an interface to zlib.")
-      (license expat))))
+;; 159wy9c6hwh5gkflwi3sqa767wxydga5511ak9dkml8bay231615
+;; https://github.com/jsoftware/graphics_bmp.git
+
+
+
+;; ;; https://github.com/jsoftware/graphics_png.git
+;; ;; 2767c9b8efea71c38b0d8433bd58aba360ea464a
+;; (define-public j-graphics-png
+;;   (let ((commit "2767c9b8efea71c38b0d8433bd58aba360ea464a")
+;;         (version "1.0.28"))
+;;     (package
+;;       (name "j-graphics-png")
+;;       (version version)
+;;       (source
+;;        (origin
+;;          (method git-fetch)
+;;          (uri
+;;           (git-reference
+;;            (url "https://github.com/jsoftware/graphics_png.git")
+;;            (commit commit)))
+;;          (sha256
+;;           (base32 "1i5i9x7am36dr58bvlhydyp3bhmhbgg355k9jfddjylbrsnb7rc9"))))
+;;       (inputs `(("j" ,j-901)
+;;                 ("j-arc-zlib" ,j-arc-zlib)))
+;;       ;; (propagated-inputs `(("j-arc-zlib" ,j-arc-zlib)))
+;;       (outputs '("out"))
+;;       (build-system gnu-build-system)
+;;       (arguments
+;;        `(#:modules ((guix build gnu-build-system) (guix build utils))
+;;          #:tests? #f
+;;          #:phases
+;;          (modify-phases %standard-phases
+;;            (delete 'configure)
+;;            (delete 'check)
+;;            (delete 'build)
+;;            (replace 'install
+;;              (lambda _
+;;                (let* ((out (string-append (assoc-ref %outputs "out")
+;;                                           "/share/j/addons/graphics/png")))
+;;                  (install-file "png.ijs" out)
+;;                  #t))))))
+;;       (home-page "https://github.com/jsoftware/arc_zlib")
+;;       (synopsis "Interface with zlib")
+;;       (description "This J addon provides an interface to zlib.")
+;;       (license expat))))
+;; 
+;; ;; bbfc957fc4ddf90231c4a06239cbc85c67cc2769
+;; ;; https://github.com/jsoftware/general_misc.git
+;; (define j-general-misc
+;;   (let ((commit "bbfc957fc4ddf90231c4a06239cbc85c67cc2769")
+;;         (version "2.5.3"))
+;;     (package
+;;       (name "j-general-misc")
+;;       (version version)
+;;       (source
+;;        (origin
+;;          (method git-fetch)
+;;          (uri
+;;           (git-reference
+;;            (url "https://github.com/jsoftware/general_misc.git")
+;;            (commit commit)))
+;;          (sha256
+;;           (base32 "0pp71i7ylyn4nv43vagh0h2y1yb2dx0py97bscxykk04xavcvx6j"))))
+;;       (inputs `(("j" ,j-901)))
+;;       (build-system gnu-build-system)
+;;       (arguments
+;;        `(#:modules ((guix build gnu-build-system) (guix build utils))
+;;          #:tests? #f
+;;          #:phases
+;;          (modify-phases %standard-phases
+;;            (delete 'configure)
+;;            (delete 'check)
+;;            (delete 'build)
+;;            (replace 'install
+;;              (lambda _
+;;                (let* ((out (string-append (assoc-ref %outputs "out")
+;;                                           "/share/j/addons/graphics/png")))
+;;                  (install-file "png.ijs" out)
+;;                  #t))))))
+;;       (home-page "https://github.com/jsoftware/arc_zlib")
+;;       (synopsis "Interface with zlib")
+;;       (description "This J addon provides an interface to zlib.")
+;;       (license expat))))
+;; 

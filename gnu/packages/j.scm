@@ -139,3 +139,14 @@
       (description "Terse, array-based language originally developed by KenIverson and Roger Hui.")
       (home-page "https://www.jsoftware.com/")
       (license gpl3))))
+
+;;;; addon utilities
+(define (read-manifest val)
+  (define command
+    (format #f "echo \"(2!:55)(0 0 $ 1!:2&2) ~a\" | jconsole manifest.ijs" val))
+  (define out (open-pipe command OPEN_READ))
+  (let loop ((x (read-char out)) (xs '()))
+    (if (eof-object? x)
+	(list->string (reverse xs))
+	(loop (read-char out) (cons x xs)))))
+
