@@ -71,16 +71,9 @@
            (delete 'build)
            (replace 'install
              (lambda _
-               ;; (display (read-manifest 'FILES))
-               (newline)
                (let ((out (string-append (assoc-ref %outputs "out")
                                          "/share/j/addons/arc/zlib")))
-                 (for-each (lambda (f)
-                             (install-file f out))
-                           '("zlib.ijs"
-                             "manifest.ijs"
-                             "readme.txt"
-                             "history.txt"))
+                 (copy-recursively "." out)
                  #t))))))
       (home-page "https://github.com/jsoftware/arc_zlib")
       (synopsis "Interface with zlib")
@@ -122,14 +115,50 @@
                                          "/share/j/addons/convert/pjson")))
                  (copy-recursively "." out)
                  #t))))))
-      (home-page "https://github.com/jsoftware/arc_zlib")
+      (home-page "https://github.com/cdburke/convert_pjson")
       (synopsis "json library for J")
       (description "This J addon provides json serialization from within J.")
       (license expat))))
 
-;; 159wy9c6hwh5gkflwi3sqa767wxydga5511ak9dkml8bay231615
+;; edcffe8d7847e9941d14f6838110a068e0a89102
 ;; https://github.com/jsoftware/graphics_bmp.git
-
+(define-public j-graphics-bmp
+  (let ((commit "edcffe8d7847e9941d14f6838110a068e0a89102")
+        (version "1.0.14"))
+    (package
+      (name "j-graphics-bmp")
+      (version version)
+      (source
+       (origin
+         (method git-fetch)
+         (uri
+          (git-reference
+           (url "https://github.com/jsoftware/graphics_bmp.git")
+           (commit commit)))
+         (sha256
+          (base32 "00k417ia5fvszmb4pnd4japrn8i15ync8n4fk1l7i7fbafinxrnr"))))
+      (native-inputs `(("j" ,j-901)))
+      (outputs '("out"))
+      (build-system gnu-build-system)
+      (arguments
+       `(#:modules ((guix build gnu-build-system)
+                    (guix build utils)
+                    (ice-9 popen))
+         #:phases
+         (modify-phases %standard-phases
+           (delete 'configure)
+           (delete 'check)
+           (delete 'build)
+           (replace 'install
+             (lambda _
+               (let ((out (string-append (assoc-ref %outputs "out")
+                                         "/share/j/addons/graphics/bmp")))
+                 (copy-recursively "." out)
+                 #t))))))
+      (home-page "https://github.com/jsoftware/graphics_bmp")
+      (synopsis "Utilities for *.bmp files")
+      (description "Utilities for *.bmp files")
+      (license expat))))
 
 
 ;; ;; https://github.com/jsoftware/graphics_png.git
