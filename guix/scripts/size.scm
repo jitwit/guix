@@ -88,13 +88,20 @@ if ITEM is not in the store."
   "Display PROFILE, a list of PROFILE objects, to PORT.  Sort entries
 according to PROFILE<?."
   (define MiB (expt 2 20))
-
-  (format port "~64a ~8a ~a\n"
+  (define widest-name
+    (reduce max 0 (map (compose string-length profile-file) profile)))
+  (define format-string-header
+    (string-append "~" (number->string widest-name) "a"
+                   "  ~8a ~a\n"))
+  (define format-string-store-item
+    (string-append "~" (number->string widest-name) "a"
+                   " ~6,1f  ~6,1f ~5,1f%\n"))
+  (format port format-string-header
           (G_ "store item") (G_ "total") (G_ "self"))
   (let ((whole (reduce + 0 (map profile-self-size profile))))
     (for-each (match-lambda
                 (($ <profile> name self total)
-                 (format port "~64a  ~6,1f  ~6,1f ~5,1f%\n"
+                 (format port format-string-store-item
                          name (/ total MiB) (/ self MiB)
                          (* 100. (/ self whole 1.)))))
               (sort profile (negate profile<?)))
